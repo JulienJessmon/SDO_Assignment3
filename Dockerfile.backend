@@ -1,0 +1,12 @@
+FROM julienjessmon/lms-backend:2.0.0
+
+RUN pip install newrelic
+
+ENV NEW_RELIC_APP_NAME="LMS System - Backend"
+ENV NEW_RELIC_ENVIRONMENT=production
+ENV NEW_RELIC_LOG=stderr
+ENV NEW_RELIC_DISTRIBUTED_TRACING_ENABLED=true
+ENV NEW_RELIC_HOST=collector.eu01.nr-data.net
+
+ENTRYPOINT []
+CMD ["newrelic-admin", "run-program", "python", "app.py"]

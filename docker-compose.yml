@@ -1,17 +1,21 @@
 services:
   backend-flask:
-    image: julienjessmon/lms-backend:2.0.0  # Replace with your Docker Hub username
-    pull_policy: always
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
     ports:
       - "4000:4000"
     environment:
       - FLASK_ENV=development
       - FLASK_APP=app.py
+      - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
+      - NEW_RELIC_APP_NAME=LMS System - Backend
     networks:
       - app-network
+      - elk-network
 
   frontend:
-    image: julienjessmon/lms-frontend:2.0.0  # Replace with your Docker Hub username
+    image: julienjessmon/lms-frontend:2.0.0
     pull_policy: always
     ports:
       - "80:80"
@@ -19,7 +23,62 @@ services:
       - backend-flask
     networks:
       - app-network
+      - elk-network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    networks:
+      - elk-network
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.13.0
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline
+    ports:
+      - "5044:5044"
+    depends_on:
+      - elasticsearch
+    networks:
+      - elk-network
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.0
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - xpack.security.enabled=false
+    depends_on:
+      - elasticsearch
+    networks:
+      - elk-network
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.13.0
+    user: root
+    command: filebeat -e --strict.perms=false
+    volumes:
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      - logstash
+    networks:
+      - elk-network
 
 networks:
   app-network:
     driver: bridge
+  elk-network:
+    driver: bridge
+
+volumes:
+  es-data:
