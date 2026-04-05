@@ -1,0 +1,25 @@
+services:
+  backend-flask:
+    image: aqaziuog/lms-backend:2.0.0  # Replace with your Docker Hub username
+    pull_policy: always
+    ports:
+      - "4000:4000"
+    environment:
+      - FLASK_ENV=development
+      - FLASK_APP=app.py
+    networks:
+      - app-network
+
+  frontend:
+    image: aqaziuog/lms-frontend:2.0.0  # Replace with your Docker Hub username
+    pull_policy: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend-flask
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
